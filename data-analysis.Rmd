@@ -134,3 +134,9 @@ The results make sense as people will use By2ollak the most when going from home
 #TODO FIX THE SORTING
 data %>% mutate(crawl_date=format(crawl_date, "%a")) %>% group_by(crawl_date) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=crawl_date, y=c)) 
 ```
+
+### Road Analysis
+
+```{r}
+(data %>% group_by(rd.nm) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head(n=20) %>% ggplot) + geom_point(aes(x=rd.nm, y=c, size=c)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```

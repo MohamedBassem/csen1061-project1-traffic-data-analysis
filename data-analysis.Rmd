@@ -3,4 +3,55 @@ title: Traffic Data Analysis
 output: html_document
 ---
 
-this is where things start :)
+```{r}
+library(ggplot2)
+library(dplyr)
+library(knitr)
+```
+
+## First Look on the data
+
+First of all let's read the data
+
+```{r cache=TRUE}
+data <- read.csv("traffic-data.csv")
+```
+
+Now let's see some stats about the data
+
+```{r}
+data %>% str
+data %>% head
+data %>% summary
+```
+
+## Let's Clean the data
+
+Let's have a look at the uniqueness of the values in each column
+
+```{r}
+data %>% sapply(function(d) length(unique(d)))
+```
+All those columns with only one unique value are useless to our analysis as they don't distinguish between rows. Also it makes some sense as most of them are ads related and the ads seems to be the same throughout the whole data set. So we will remove all the ads related columns.
+
+```{r}
+data$ad.aid <- NULL
+data$ad.bgcl <- NULL
+data$ad.bgcls <- NULL
+data$ad.fncl <- NULL
+data$ad.fncls <- NULL
+data$ad.lid <- NULL
+data$ad.logo <- NULL
+data$ad.logo2x <- NULL
+data$ad.logoAndroidS <- NULL
+data$ad.logoAndroidH <- NULL
+data$ad.cm <- NULL
+data$ad.url <- NULL
+data$ad.g <- NULL
+```
+
+According to the structure we saw above, dates are represented as factors. We can convert them to a better format using the `strptime` function and convert it a format that `dplyr` understands using the `as.POSIXct` function.
+
+```{r}
+data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %y", tz="UTC"))
+```

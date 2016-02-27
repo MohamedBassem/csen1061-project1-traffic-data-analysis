@@ -20,9 +20,11 @@ data <- read.csv("traffic-data.csv")
 Now let's see some stats about the data
 
 ```{r}
-data %>% str
+data %>% dim
+data %>% glimpse
 data %>% head
 data %>% summary
+data %>% sapply(function(d) sum(is.na(d)))
 ```
 
 ## Let's Clean the data
@@ -55,3 +57,41 @@ According to the structure we saw above, dates are represented as factors. We ca
 ```{r}
 data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %y", tz="UTC"))
 ```
+
+## Column Analysis
+
+Now Let's have another look at the dataset columns and try to infer some info from the column names and values.
+
+```{r}
+data %>% glimpse
+data %>% select(rd.new, rd.strq, rd.cmrq) %>% sapply(function(d) unique(d))
+data %>% select(rd.new, rd.strq, rd.cmrq) %>% sapply(function(d) sum(d))
+```
+
+Those are my estimation for the columns meanings
+```
+crawl_date   # The date this data was crawled
+rd.nm        # The Road name
+rd.ri        # Seemed like the road id and was confirmed from By2ollak's HTML
+rd.stid      # The Road Status Id ( Lazeez, ... ). Also confirmed from the HTML
+rd.hr        # The road status last updated hour
+rd.mn        # The road status last updated minute
+rd.new       # Boolean values that needs some more investigation
+rd.img       # A road image, whatever this means
+rd.cl        # Probably road display color, won't be useful for us at all
+rd.strq      # Another boolean value that needs investigation
+rd.cmrq      # Another boolean value that needs investigation
+rd.rp.nm     # Username of reporter
+rd.rp.fullnm # Full name of reporter
+rd.rp.hr     # Road report hour fetched
+rd.rp.mn     # Road report minute fetched
+rd.rp.stid   # The reporter's reported road status
+rd.rp.cm     # The reporter's comment
+rd.rp.cmid   # Report id
+rd.rp.rpImg  # Reporter img or whatever, also not useful
+rd.rp.img    # Same as rd.rp.rpImg
+rd.rp.type   # A boolean value that's probably worth investigation
+```
+
+
+

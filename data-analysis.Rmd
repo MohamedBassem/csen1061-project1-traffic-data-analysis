@@ -35,7 +35,7 @@ Let's have a look at the uniqueness of the values in each column
 ```{r}
 data %>% sapply(function(d) length(unique(d)))
 ```
-All those columns with only one unique value are useless to our analysis as they don't distinguish between rows. Also it makes some sense as most of them are ads related and the ads seems to be the same throughout the whole data set. So we will remove all the ads related columns.
+All those columns with only one unique value are useless to our analysis as they don't distinguish between rows. Also it makes some sense as most of them are ads related and the ads seems to be the same throughout the whole data set. So we will remove all the ads related columns and those columns with only a single value.
 
 ```{r}
 data$ad.aid <- NULL
@@ -51,6 +51,9 @@ data$ad.logoAndroidH <- NULL
 data$ad.cm <- NULL
 data$ad.url <- NULL
 data$ad.g <- NULL
+data$rd.cl <- NULL
+data$rd.img <- NULL
+data$rd.rp.type <- NULL
 ```
 
 According to the structure we saw above, dates are represented as factors. We can convert them to a better format using the `strptime` function and convert it a format that `dplyr` understands using the `as.POSIXct` function.
@@ -78,20 +81,17 @@ rd.stid      # The Road Status Id ( Lazeez, ... ). Also confirmed from the HTML
 rd.hr        # The road status last updated hour
 rd.mn        # The road status last updated minute
 rd.new       # Boolean values that needs some more investigation
-rd.img       # A road image, whatever this means
-rd.cl        # Probably road display color, won't be useful for us at all
 rd.strq      # Another boolean value that needs investigation
 rd.cmrq      # Another boolean value that needs investigation
 rd.rp.nm     # Username of reporter
 rd.rp.fullnm # Full name of reporter
-rd.rp.hr     # Road report hour fetched
-rd.rp.mn     # Road report minute fetched
+rd.rp.hr     # Road report hours ago created
+rd.rp.mn     # Road report minutes ago created
 rd.rp.stid   # The reporter's reported road status
 rd.rp.cm     # The reporter's comment
 rd.rp.cmid   # Report id
 rd.rp.rpImg  # Reporter img or whatever, also not useful
 rd.rp.img    # Same as rd.rp.rpImg
-rd.rp.type   # A boolean value that's probably worth investigation
 ```
 
 One of those columns seems very interesting. It's the `rd.rp.cmid`. It's the column representing the report Id. Since these dataset is all about reports, this column's values should be globally unique across the whole dataset.

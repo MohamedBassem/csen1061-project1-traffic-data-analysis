@@ -114,7 +114,7 @@ Let's see the time people report the most
 data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=as.POSIXct(strptime(crawl_time, format="%H:%M:%S"))) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid))  %>% ggplot + geom_point(aes(x=crawl_time, y=c))
 ```
 
-The crawling usually takes some time, so to have a better plot let's round it to the nearest half an hour.
+The crawling usually takes some time, that's why we have a lot of values on the x-axis. To have a better plot let's round it to the nearest half an hour.
 
 ```{r}
 round_time <- function(time){
@@ -122,17 +122,36 @@ round_time <- function(time){
   as.POSIXct(strptime("1970-01-01", "%Y-%m-%d", tz="UTC") + round(as.numeric(posix_time)/1800)*1800 + 60*60*2) # The added 60*60*2 is a hack to fix the TZ
 }
 
-data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=format(round_time(crawl_time), "%H:%M")) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
-
-data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=round_time(crawl_time)) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=crawl_time, y=c))
+data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=round_time(crawl_time)) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity')
 ```
 
-The results make sense as people will use By2ollak the most when going from home to work (~ 07:30am) and back to home. But the peak at 22:30 seems a bit suspicious and needs further investigation.
+The peak at 22:30 seems a bit suspicious. Let's investigate it more.
+
+```{r}
+data$rd.rp.hr %>% unique
+```
+
+Seeing this, now we are sure that it's the number of hours ago the report was created relative to the crawl time. We should take this into consideration instead of using the crawl time only.
+
+```{r}
+
+data <- (data %>% mutate(report_date=crawl_date - (rd.rp.hr*60*60) - (rd.rp.mn * 60) ))
+# We don't need those columns anymore
+data$rd.rp.hr <- NULL
+data$rd.rp.mn <- NULL
+data$crawl_date <- NULL
+
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
+
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+The results make sense as people will use By2ollak the most when going from home to work (06:30am - 07:00am) and back to home (02:30pm - 04:00pm) and those are the peeks in the plot. Also notice that the period between (01:00am - 04:00am) is the quitest.
 
 
 ```{r}
 #TODO FIX THE SORTING
-data %>% mutate(crawl_date=format(crawl_date, "%a")) %>% group_by(crawl_date) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=crawl_date, y=c)) 
+data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=report_date, y=c))
 ```
 
 ### Road Analysis

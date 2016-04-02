@@ -192,3 +192,74 @@ stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
 
 (data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="SS")
 ```
+
+By manually inspcting the website, you'll find a special username (@bey2ollakgps) who's always tweeting in a certain format about the speed between two points. Let's give it a look.
+
+```{r}
+(data %>% filter(grepl("bey2ollakgps", rd.rp.nm)))$rd.rp.cm %>% head
+```
+
+We can extract those speeds data into a seperate dataset for further analysis.
+
+```{r}
+speed_data <- ( data %>%
+                 filter(grepl("bey2ollakgps", rd.rp.nm)) %>%
+                 select(report_date,rd.nm, rd.rp.cm, rd.rp.stid)
+              )
+
+OVERALL_TOOK_REGEX <- "Overall took \\[(\\d+) min\\] with average speed \\[(\\d+) km/h\\]"
+FROM_TO_REGEX <- "From \\[(.*)\\] to \\[(.*)\\] took \\[(\\d+) mins\\] with average speed \\[(\\d+) km/h\\]"
+MN_ELA_REGEX <- "من \\[(.*)\\] إلى \\[(.*)\\] في \\[(\\d+) ق\\] ومتوسط سرعته \\[(\\d+) كم/س\\]"
+ELTREE2_5AD_REGEX <- "الطريق أخد حوالي \\[(\\d+) ق\\] ومتوسط سرعته \\[(\\d+) كم/س\\]"
+ROAD_REGEX <- "(.*);(.*) To (.*)"
+
+tmp2 <- t(apply(speed_data, 1, function(x){
+
+  tmp <- c(NA,NA,NA,NA)
+
+  comment <- x["rd.rp.cm"]
+  road_name <- x["rd.nm"]
+
+  if(grepl(OVERALL_TOOK_REGEX, comment)) {
+    tmp[1] <- gsub(ROAD_REGEX, "\\1;\\2", road_name)
+    tmp[2] <- gsub(ROAD_REGEX, "\\1;\\3", road_name)
+    tmp[3] <- gsub(OVERALL_TOOK_REGEX, "\\1", comment)
+    tmp[4] <- gsub(OVERALL_TOOK_REGEX, "\\2", comment)
+  }
+
+  if(grepl(ELTREE2_5AD_REGEX, comment)) {
+    tmp[1] <- gsub(ROAD_REGEX, "\\1;\\2", road_name)
+    tmp[2] <- gsub(ROAD_REGEX, "\\1;\\3", road_name)
+    tmp[3] <- gsub(ELTREE2_5AD_REGEX, "\\1", comment)
+    tmp[4] <- gsub(ELTREE2_5AD_REGEX, "\\2", comment)
+  }
+
+  if(grepl(FROM_TO_REGEX, comment)) {
+    tmp[1] <- gsub(FROM_TO_REGEX, "\\1", comment)
+    tmp[2] <- gsub(FROM_TO_REGEX, "\\2", comment)
+    tmp[3] <- gsub(FROM_TO_REGEX, "\\3", comment)
+    tmp[4] <- gsub(FROM_TO_REGEX, "\\4", comment)
+  }
+
+  if(grepl(MN_ELA_REGEX, comment)) {
+    tmp[1] <- gsub(MN_ELA_REGEX, "\\1", comment)
+    tmp[2] <- gsub(MN_ELA_REGEX, "\\2", comment)
+    tmp[3] <- gsub(MN_ELA_REGEX, "\\3", comment)
+    tmp[4] <- gsub(MN_ELA_REGEX, "\\4", comment)
+  }
+
+  tmp
+}))
+
+speed_data$from <- tmp2[,1]
+speed_data$to <- tmp2[,2]
+speed_data$time <- tmp2[,3]
+speed_data$speed <- tmp2[,4]
+
+```
+
+Let's have a look on our new dataset
+
+```{r}
+speed_data %>% sample_n(10) %>% kable
+```

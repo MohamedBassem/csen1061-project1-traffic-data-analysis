@@ -54,6 +54,8 @@ data$ad.g <- NULL
 data$rd.cl <- NULL
 data$rd.img <- NULL
 data$rd.rp.type <- NULL
+data$rd.rp.rpImg <- NULL
+data$rd.rp.img<- NULL
 ```
 
 According to the structure we saw above, dates are represented as factors. We can convert them to a better format using the `strptime` function and convert it a format that `dplyr` understands using the `as.POSIXct` function.
@@ -90,8 +92,6 @@ rd.rp.mn     # Road report minutes ago created
 rd.rp.stid   # The reporter's reported road status
 rd.rp.cm     # The reporter's comment
 rd.rp.cmid   # Report id
-rd.rp.rpImg  # Reporter img or whatever, also not useful
-rd.rp.img    # Same as rd.rp.rpImg
 ```
 
 One of those columns seems very interesting. It's the `rd.rp.cmid`. It's the column representing the report Id. Since these dataset is all about reports, this column's values should be globally unique across the whole dataset.

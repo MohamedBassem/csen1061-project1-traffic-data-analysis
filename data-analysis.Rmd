@@ -1,5 +1,5 @@
 ---
-title: Traffic Data Analysis
+title: "Traffic Data Analysis"
 output: html_document
 ---
 
@@ -38,24 +38,30 @@ data %>% sapply(function(d) length(unique(d)))
 All those columns with only one unique value are useless to our analysis as they don't distinguish between rows. Also it makes some sense as most of them are ads related and the ads seems to be the same throughout the whole data set. So we will remove all the ads related columns and those columns with only a single value.
 
 ```{r}
-data$ad.aid <- NULL
-data$ad.bgcl <- NULL
-data$ad.bgcls <- NULL
-data$ad.fncl <- NULL
-data$ad.fncls <- NULL
-data$ad.lid <- NULL
-data$ad.logo <- NULL
-data$ad.logo2x <- NULL
-data$ad.logoAndroidS <- NULL
-data$ad.logoAndroidH <- NULL
-data$ad.cm <- NULL
-data$ad.url <- NULL
-data$ad.g <- NULL
-data$rd.cl <- NULL
-data$rd.img <- NULL
-data$rd.rp.type <- NULL
-data$rd.rp.rpImg <- NULL
-data$rd.rp.img<- NULL
+
+data <- (
+         data %>% select(-c(
+                            ad.aid,
+                            ad.bgcl,
+                            ad.bgcls,
+                            ad.fncl,
+                            ad.fncls,
+                            ad.lid,
+                            ad.logo,
+                            ad.logo2x,
+                            ad.logoAndroidS,
+                            ad.logoAndroidH,
+                            ad.cm,
+                            ad.url,
+                            ad.g,
+                            rd.cl,
+                            rd.img,
+                            rd.rp.type,
+                            rd.rp.rpImg,
+                            rd.rp.img
+                            )
+         )
+ )
 ```
 
 According to the structure we saw above, dates are represented as factors. We can convert them to a better format using the `strptime` function and convert it a format that `dplyr` understands using the `as.POSIXct` function.
@@ -71,7 +77,25 @@ Now Let's have another look at the dataset columns and try to infer some info fr
 ```{r}
 data %>% glimpse
 data %>% select(rd.new, rd.strq, rd.cmrq) %>% sapply(function(d) unique(d))
-data %>% select(rd.new, rd.strq, rd.cmrq) %>% sapply(function(d) sum(d))
+```
+
+The `rd.strq` and `rd.cmrq` are boolean properties of the road. After some investigation, I found that they don't have any presence in the HTML/JS of the desktop version of By2ollak. My guess would be that they are for the mobile version to determine whether choosing a status/adding a comment is required or not when leaving a report. This would be confirmed if there isn't any road who has this flag both set and unset in the same dataset. In other words, the set containing the roads who has the flag set doesn't intersect with the one with the flag unset.
+
+```{r, collapse=TRUE}
+data %>% group_by(rd.strq) %>% summarize(c=length(unique(rd.nm)))
+sum((data %>% group_by(rd.strq) %>% summarize(c=length(unique(rd.nm))))$c) == (data$rd.nm %>% unique %>% length)
+
+data %>% group_by(rd.cmrq) %>% summarize(c=length(unique(rd.nm)))
+sum((data %>% group_by(rd.cmrq) %>% summarize(c=length(unique(rd.nm))))$c) == (data$rd.nm %>% unique %>% length)
+
+data %>% group_by(rd.new) %>% summarize(c=length(unique(rd.nm)))
+sum((data %>% group_by(rd.cmrq) %>% summarize(c=length(unique(rd.nm))))$c) == (data$rd.nm %>% unique %>% length)
+```
+
+The guess seems to be correct. That's why those columns are not important to us any more.
+
+```{r}
+data <- (data %>% select(-c(rd.strq, rd.cmrq, rd.new)))
 ```
 
 Those are my estimation for the columns meanings
@@ -82,9 +106,6 @@ rd.ri        # Seemed like the road id and was confirmed from By2ollak's HTML
 rd.stid      # The Road Status Id ( Lazeez, ... ). Also confirmed from the HTML
 rd.hr        # The road status last updated hour
 rd.mn        # The road status last updated minute
-rd.new       # Boolean values that needs some more investigation
-rd.strq      # Another boolean value that needs investigation
-rd.cmrq      # Another boolean value that needs investigation
 rd.rp.nm     # Username of reporter
 rd.rp.fullnm # Full name of reporter
 rd.rp.hr     # Road report hours ago created
@@ -93,6 +114,7 @@ rd.rp.stid   # The reporter's reported road status
 rd.rp.cm     # The reporter's comment
 rd.rp.cmid   # Report id
 ```
+
 
 One of those columns seems very interesting. It's the `rd.rp.cmid`. It's the column representing the report Id. Since these dataset is all about reports, this column's values should be globally unique across the whole dataset.
 

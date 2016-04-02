@@ -59,7 +59,7 @@ data$rd.rp.type <- NULL
 According to the structure we saw above, dates are represented as factors. We can convert them to a better format using the `strptime` function and convert it a format that `dplyr` understands using the `as.POSIXct` function.
 
 ```{r}
-data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %y", tz="UTC"))
+data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %Y", tz="UTC"))
 ```
 
 ## Column Analysis
@@ -146,7 +146,7 @@ data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>
 data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-The results make sense as people will use By2ollak the most when going from home to work (06:30am - 07:00am) and back to home (02:30pm - 04:00pm) and those are the peeks in the plot. Also notice that the period between (01:00am - 04:00am) is the quitest.
+The results make sense as people will use By2ollak the most when going from home to work (06:30am - 07:00am) and back to home (02:30pm - 04:00pm) and those are the peeks in the plot. Also notice that the period between (01:00am - 04:00am) is the quietest.
 
 
 ```{r}

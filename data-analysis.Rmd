@@ -266,3 +266,7 @@ Let's have a look on our new dataset
 ```{r}
 speed_data %>% sample_n(10) %>% kable
 ```
+
+```{r}
+(speed_data %>% mutate(from_to=paste(from,"->",to), speed=as.integer(speed)) %>% head(1000) %>% select(from_to, speed) %>% ggplot()) + geom_boxplot(aes(factor(from_to), speed)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```

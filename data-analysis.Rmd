@@ -150,9 +150,10 @@ The results make sense as people will use By2ollak the most when going from home
 
 
 ```{r}
-#TODO FIX THE SORTING
-data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=report_date, y=c))
+data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y")
 ```
+
+Report day distribution isn't really significant as all the days are close to each other. The only significant thing is that Thursday is the highest with a margin probably as it's the weekend.
 
 ### Road Analysis
 

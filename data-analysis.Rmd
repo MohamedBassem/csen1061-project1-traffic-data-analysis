@@ -157,6 +157,16 @@ Report day distribution isn't really significant as all the days are close to ea
 
 ### Road Analysis
 
+Let's plot the top 20 roads that get reports along with the type of reports that they get.
 ```{r}
-(data %>% group_by(rd.nm) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head(n=20) %>% ggplot) + geom_point(aes(x=rd.nm, y=c, size=c)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+highest_rp_roads <- (data %>% group_by(rd.nm) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head(20))$rd.nm
+
+data_to_plot <- (data %>% filter(rd.nm %in% highest_rp_roads) %>% filter(rd.rp.stid < 6) %>% group_by(rd.nm, rd.rp.stid) %>% summarize(c=length(rd.rp.cmid)))
+
+stid_mapping <- c("7alawa","lazez","mashy","za7ma","mafesh amal","so2al","5atar","7adsa","3otl","m3loma")
+
+stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
+
+(data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="SS")
 ```

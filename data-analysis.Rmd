@@ -269,3 +269,31 @@ speed_data %>% sample_n(10) %>% kable
 ```{r}
 (speed_data %>% mutate(from_to=paste(from,"->",to), speed=as.integer(speed)) %>% head(1000) %>% select(from_to, speed) %>% ggplot()) + geom_boxplot(aes(factor(from_to), speed)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
+
+# City analysis
+
+Let's augment our data by the info of whether a certain road is in Alexandria and Cairo. By doing so, we would be able to start doing some comparisons between the two cities. Road ids of Cairo and Alex were fetched and parsed from by2ollak's HTML and written as CSV in `city_road_id.csv`.
+
+```{r}
+city_road <- read.csv("city_road_id.csv")
+cairo_ids <- city_road[city_road$city == "cairo","rd.ri"]
+alex_ids <- city_road[city_road$city == "alex","rd.ri"]
+
+data <- (data %>% mutate(city= ifelse(rd.ri %in% cairo_ids, "cairo", ifelse(rd.ri %in% alex_ids, "alex", NA))))
+
+#Manually fix some NAs that are not present in the HTML for some reason
+data[data$rd.nm == "Makram 3ebeid;Autostrad To Mostafa ElNa7as",]$city <- "cairo"
+data[data$rd.nm == "Gam3et ElDewal St;Sudan St To Sphinx",]$city <- "cairo"
+data[data$rd.nm == "Tagamo3",]$city <- "cairo"
+data[data$rd.nm == "توتال (برج العرب)",]$city <- "alex"
+data[data$rd.nm == "Sa7rawy;Alex To Cairo",]$city <- "alex"
+```
+
+Let's plot the percentage of reports in cairo compared to alex.
+
+```{r}
+data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y")
+```
+
+It seems like the number of people reporting in Cairo is much more than those who report in Alex.
+

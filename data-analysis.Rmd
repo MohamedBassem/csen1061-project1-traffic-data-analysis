@@ -1,7 +1,6 @@
 ---
 title: "Traffic Data Analysis"
 output: html_document
-runtime: shiny
 ---
 
 ```{r}
@@ -10,7 +9,7 @@ library(tidyr)
 library(dplyr)
 library(knitr)
 library(stringr)
-library(shiny)
+library(knitr)
 ```
 
 ## First Look on the data
@@ -71,6 +70,7 @@ According to the structure we saw above, dates are represented as factors. We ca
 
 ```{r}
 data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %Y", tz="UTC"))
+data$rd.rp.nm <- as.character(data$rd.rp.nm)
 ```
 
 ## Column Analysis
@@ -175,7 +175,7 @@ The results make sense as people will use By2ollak the most when going from home
 
 
 ```{r}
-data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y")
+data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
 ```
 
 Report day distribution isn't really significant as all the days are close to each other. The only significant thing is that Thursday is the highest with a margin probably as it's the weekend.
@@ -294,8 +294,29 @@ data[data$rd.nm == "Sa7rawy;Alex To Cairo",]$city <- "alex"
 Let's plot the percentage of reports in cairo compared to alex.
 
 ```{r}
-data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y")
+data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
 ```
 
 It seems like the number of people reporting in Cairo is much more than those who report in Alex.
+
+
+# Gender Analysis
+
+I though that the gender may be a useful feature in our data so I got the first name of all the users and wrote a script to query an endpoint that can infer genders and select only genders with high confidence. Let's add these info to our data.
+
+```{r}
+write.csv(data$rd.rp.nm, file="./name_manipulation/names.txt")
+```
+
+```{r, engine="bash"}
+pushd ./name_manipulation
+./full_name_gender
+popd
+```
+
+```{r}
+data$gender <- read.csv(file="./name_manipulation/output.txt")$gender
+have_a_gender <- data %>% filter(!is.na(gender) & gender != "")
+have_a_gender %>% select(rd.rp.nm, gender) %>% head(10) %>% kable
+```
 

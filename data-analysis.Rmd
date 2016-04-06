@@ -1,6 +1,7 @@
 ---
 title: "Traffic Data Analysis"
 output: html_document
+runtime: shiny
 ---
 
 ```{r}
@@ -9,6 +10,7 @@ library(tidyr)
 library(dplyr)
 library(knitr)
 library(stringr)
+library(shiny)
 ```
 
 ## First Look on the data

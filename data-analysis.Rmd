@@ -257,8 +257,7 @@ speed_data$to <- tmp2[,2]
 speed_data$time <- tmp2[,3]
 speed_data$speed <- tmp2[,4]
 
-speed_data %>% mutate(speed=as.integer(speed), time=as.integer(time))
-
+speed_data <- (speed_data %>% mutate(speed=as.integer(speed), time=as.integer(time)))
 ```
 
 Let's have a look on our new dataset

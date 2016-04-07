@@ -200,7 +200,7 @@ Now that we have a clean, ready to use data, let's start adding some more useful
 Let's see the timings people report
 
 ```{r}
-data %>% separate(crawl_date, into=c("crawl_date_tmp","crawl_time"), sep =" ") %>% mutate(crawl_time=as.POSIXct(strptime(crawl_time, format="%H:%M:%S"))) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=crawl_time, y=c))
+data %>% separate(crawl_date, into=c("crawl_date_tmp","crawl_time"), sep =" ") %>% mutate(crawl_time=as.POSIXct(strptime(crawl_time, format="%H:%M:%S"))) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=crawl_time, y=c)) + labs(title="Reports per day half hour", x="Time", y="Number of reports per 30 mins")
 ```
 
 The crawling usually takes some time, that's why we have a lot of values on the x-axis. To have a better plot let's round it to the nearest half an hour.
@@ -211,7 +211,7 @@ round_time <- function(time, mins){
   as.POSIXct(strptime("1970-01-01", "%Y-%m-%d", tz="UTC") + round(as.numeric(posix_time)/(mins*60))*(mins*60))
 }
 
-data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=format(round_time(crawl_time,30), "%H:%M")) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=format(round_time(crawl_time,30), "%H:%M")) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(title="Reports per day half hour", x="Time", y="Number of reports per 30 mins")
 
 ```
 
@@ -256,13 +256,13 @@ data[data$rd.nm == "Sa7rawy;Alex To Cairo",]$city <- "alex"
 
 ### Road Speed Dataset
 
-By manually inspcting the website, you'll find a special username (@bey2ollakgps) who's always tweeting in a certain format about the speed between two points. Let's give it a look.
+By manually inspecting the website, you'll find a special username (@bey2ollakgps) who's always tweeting in a certain format about the speed between two points. Let's give it a look.
 
 ```{r}
 (data %>% filter(grepl("bey2ollakgps", rd.rp.nm)))$rd.rp.cm %>% head
 ```
 
-We can extract those speeds data into a seperate dataset for further analysis.
+We can extract those speeds data into a separate dataset for further analysis.
 
 ```{r}
 speed_data <- ( data %>%
@@ -354,7 +354,7 @@ nrow(have_a_gender)
 
 *Terminolgy*
 
-In the following analysis, we need a way to quantify how crowded is a certain road. To acheive this we will be using the user's reports. People's reports are one of the followings:
+In the following analysis, we need a way to quantify how crowded is a certain road. To achieve this we will be using the user's reports. People's reports are one of the followings:
 ```
 1 --> 7lawa
 2 --> lazez
@@ -369,7 +369,7 @@ If we get the average of those values at a certain point of time we can estimate
 ```{r}
 data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
 
-data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + labs(title="Reports per day half hour", x="Time", y="Number of reports per 30 mins")
 ```
 
 The results shows that people use By2ollak the most when going from home to work (08:30am - 09:00am) and back to home (04:30pm - 06:00pm). Also notice that the period between (03:00am - 06:00am) is the quietest.
@@ -377,7 +377,7 @@ The results shows that people use By2ollak the most when going from home to work
 We can plot the distribution of reports against the week day.
 
 ```{r}
-data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date), leg)) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank()) + labs(title="Percentage of reports per weekday", y="", x="") + scale_fill_discrete(name="Weekday")
 ```
 
 Report day distribution isn't really significant as all the days are close to each other. The only significant thing is that Thursday is the highest with a margin probably as it's the weekend.
@@ -385,7 +385,7 @@ Report day distribution isn't really significant as all the days are close to ea
 If we plot the number of reports segmented by the week day, you'll notice that the two peaks pattern we talked about earlier ( The work thing ) not there for weekends ( Friday and Saturday ).
 
 ```{r}
-data %>% mutate(new_rep_date=report_date) %>% separate(new_rep_date, into=c("report_date_1","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5), report_day=format(report_date, "%a")) %>% group_by(report_day, report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c, color=factor(report_day))) + geom_line() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~report_day, nrow=7)
+data %>% mutate(new_rep_date=report_date) %>% separate(new_rep_date, into=c("report_date_1","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5), report_day=format(report_date, "%a")) %>% group_by(report_day, report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c, color=factor(report_day))) + geom_line() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~report_day, nrow=7) + labs(title="Reports per Weekday", x="Time", y="Number of reports per 5 mins" )
 ```
 
 
@@ -401,7 +401,7 @@ stid_mapping <- c("7alawa","lazez","mashy","za7ma","mafesh amal","so2al","5atar"
 
 stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
 
-(data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="SS")
+(data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="Status") + labs(title="Top 20 reported roads", x="Road Name", y="Number of Reports")
 ```
 
 ### A random road : "Me7war: Sa7rawy To Da2ery"
@@ -412,22 +412,21 @@ Is the congestion on El Me7war from Sa7rawy to Da2ery affected by the rush hours
 s7rawy_da2ery <- data %>% filter(rd.nm == "Me7war;Sa7rawy To Da2ery")
 sa7rawy_da2ery_speed <- speed_data %>% filter(from == "Me7war;Sa7rawy" & to == "Me7war;Da2ery")
 
+p1 <- sa7rawy_da2ery %>% filter(!is.na(rd.rp.stid) & rd.rp.stid < 6) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time) %>% summarize(c= mean(rd.rp.stid)) %>% ggplot(aes(x=report_time, y=c)) + geom_line() + labs(title="Average stid comparison", x="Time", y="Average Stid per 2 mins")
 
-p1 <- sa7rawy_da2ery %>% filter(!is.na(rd.rp.stid) & rd.rp.stid < 6) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time) %>% summarize(c= mean(rd.rp.stid)) %>% ggplot(aes(x=report_time, y=c)) + geom_line()
-
-p2 <- sa7rawy_da2ery_speed %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time) %>% summarize(c= mean(speed)) %>% ggplot(aes(x=report_time, y=c)) + geom_line()
+p2 <- sa7rawy_da2ery_speed %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time) %>% summarize(c= mean(speed)) %>% ggplot(aes(x=report_time, y=c)) + geom_line() + labs(title="Average Speed comparison", x="Time", y=" Average speed per 2 minutes")
 
 multiplot(p1,p2)
 ```
 
-Yes! The two peaks of the rush hour are reflected on this plot, where it experinces a slowdown and an increase of the average stid.
+Yes! The two peaks of the rush hour are reflected on this plot, where it experiences a slowdown and an increase of the average stid.
 
 ### Cairo Vs. Alex
 
 Let's plot the percentage of reports in cairo compared to alex.
 
 ```{r}
-data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank()) + labs(title="City distribution of By2ollak reports", x="", y="") + scale_fill_discrete(name="City")
 ```
 
 It seems like the number of people reporting in Cairo is much more than those who report in Alex.
@@ -440,7 +439,7 @@ tmp_data <- data %>% separate(report_date, into=c("report_date","report_time"), 
 tmp_data_cairo <- tmp_data %>% filter(city == "cairo")
 tmp_data_alex <- tmp_data %>% filter(city == "alex")
 
-ggplot() + geom_bar(data=tmp_data_cairo, aes(x=report_time,y=c, fill=city, color=city), stat="identity") + geom_bar(data=tmp_data_alex, aes(x=report_time,y=c, fill=city, color=city),stat="identity")
+ggplot() + geom_bar(data=tmp_data_cairo, aes(x=report_time,y=c, fill=city, color=city), stat="identity") + geom_bar(data=tmp_data_alex, aes(x=report_time,y=c, fill=city, color=city),stat="identity") + labs(title="Reports per minute", x="Time", y="Reports per minute")
 ```
 
 ```{r}
@@ -450,29 +449,29 @@ tmp_data <- data %>% separate(report_date, into=c("report_date","report_time"), 
 tmp_data_cairo <- tmp_data %>% filter(city == "cairo")
 tmp_data_alex <- tmp_data %>% filter(city == "alex")
 
-ggplot() + geom_line(data=tmp_data_cairo, aes(x=report_time,y=cumsum(c))) + geom_line(data=tmp_data_alex, aes(x=report_time,y=cumsum(c)))
+ggplot() + geom_line(data=tmp_data_cairo, aes(x=report_time,y=cumsum(c), color=city)) + geom_line(data=tmp_data_alex, aes(x=report_time,y=cumsum(c), color=city)) + labs(title="Cumulative report times per minute", x="Time", y="Reports per minute")
 ```
 
-From the two plots, the rush hours in alex isn't that segnificant like the one in cairo ( The two peaks ). Does this mean that there isn't heavy traffic in Alex even in rush hours? Let's check.
+From the two plots, the rush hours in alex isn't that significant like the one in cairo ( The two peaks ). Does this mean that there isn't heavy traffic in Alex even in rush hours? Let's check.
 
 ```{r}
-data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() 
+data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() + labs(title="Average Stid Comparison", x="Time", y="Average stid per 5 mins")
 ```
 
 Between 9am and 10pm, the average reported status in cairo is always higher than that of Cairo. Alex seems like it's stable at status Id "2" which is "lazeez". If so, does this imply that the average speed in alex is higher than that of cairo ?
 
 ```{r}
-speed_data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,60)) %>%  ggplot(aes(x=factor(report_time), y=speed, color=city)) + geom_boxplot() + scale_y_log10()
+speed_data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,60)) %>%  ggplot(aes(x=factor(report_time), y=speed, color=city)) + geom_boxplot() + scale_y_log10() + theme(axis.text.x=element_blank()) + labs(title="Average Speed comparison", x="Time", y="Average speed per hour")
 ```
 
-No. The average speed in Cairo is almost higher than Alex.
+No. The average speed in Cairo is always higher than Alex.
 
 ### Male Vs. Female
 
 First of all, what's the ratio of female by2ollak users to male users ?
 
 ```{r}
-have_a_gender %>% group_by(gender) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(gender))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+have_a_gender %>% group_by(gender) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(gender))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank()) + labs(title="Gender distribution of By2ollak users", x="", y="") + scale_fill_discrete(name="Gender")
 ```
 
 Males in Egypt usually stay later at night than females, can we prove that from the number of reports of males/females against the time ?
@@ -483,21 +482,18 @@ tmp_data <- have_a_gender %>% separate(report_date, into=c("report_date","report
 tmp_data_male <- tmp_data %>% filter(gender == "male")
 tmp_data_female <- tmp_data %>% filter(gender == "female")
 
-ggplot() + geom_bar(data=tmp_data_male, aes(x=report_time,y=c, fill=gender, color=gender), stat="identity") + geom_bar(data=tmp_data_female, aes(x=report_time,y=c, fill=gender, color=gender),stat="identity")
+ggplot() + geom_bar(data=tmp_data_male, aes(x=report_time,y=c, fill=gender, color=gender), stat="identity") + geom_bar(data=tmp_data_female, aes(x=report_time,y=c, fill=gender, color=gender),stat="identity") + labs(title="Number of reports per 2 mins", x="Time", y="Nubmer of reports per 2 mins")
 
-ggplot() + geom_line(data=tmp_data_male, aes(x=report_time,y=cumsum(c))) + geom_line(data=tmp_data_female, aes(x=report_time,y=cumsum(c)))
+ggplot() + geom_line(data=tmp_data_male, aes(x=report_time,y=cumsum(c), color=gender)) + geom_line(data=tmp_data_female, aes(x=report_time,y=cumsum(c), color=gender)) + labs(title="Cummulative number of reports comparisons between males and females", x= "Time", y= "Number Of reports per 2 mins")
 ```
 
 No. The group doesn't support our assumption.
 
 ## Hypotheses 
 
-### Tendancy of those who ask to report
-
-
 ### People tend to report when it's crowded
 
-My hypothesis here would be that people tend to report more when it's crowded. To prove this, we'll need to prove that distribution of the average status ID aganist the time is equivilant to the distribtution of the number of reports aganist the time. Which means that at a certain point of time, if the number of reports is hight, then the average status id should be high.
+My hypothesis here would be that people tend to report more when it's crowded. To prove this, we'll need to prove that distribution of the average status ID against the time is equivalent to the distribution of the number of reports against the time. Which means that at a certain point of time, if the number of reports is high, then the average status id should be high.
 
 ```{r}
 average_stid <- data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time) %>% summarize(average_stid= mean(rd.rp.stid))
@@ -505,13 +501,12 @@ average_stid <- data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separat
 
 reports_per_time <- data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time) %>% summarize(c= length(rd.rp.stid))
 
-
-p1 <- ggplot(average_stid, aes(x=report_time, y=average_stid/sum(average_stid))) + geom_point()
-p2 <- ggplot(reports_per_time, aes(x=report_time, y=c/sum(c))) + geom_point()
+p1 <- ggplot(average_stid, aes(x=report_time, y=average_stid)) + geom_point() + labs(title="Average stid per 5 mins", x="Time", y="Average Stid")
+p2 <- ggplot(reports_per_time, aes(x=report_time, y=c)) + geom_point() + labs(title="Number of reports per 5 mins", x="Time", y="Number of reports")
 
 multiplot(p1,p2)
 
-ggplot(NULL,aes(y=sort(average_stid$average_stid), x=sort(reports_per_time$c))) + geom_point() + geom_smooth(method="lm", se=FALSE)
+ggplot(NULL,aes(y=sort(average_stid$average_stid), x=sort(reports_per_time$c))) + geom_point() + geom_smooth(method="lm", se=FALSE) + labs(title="Q-Q Plot", x="Number of reports per 5 mins", y="Average Status Id per 5 mins")
 ```
 
 The qqplot shows that as the number of reports increase, the average stid increase. When the number of reports is greater than 200 report/5 mins, they are both directly proportional and given the number of votes you can directly predict the average stid.

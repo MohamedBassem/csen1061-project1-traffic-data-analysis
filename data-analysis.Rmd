@@ -335,7 +335,6 @@ data %>% mutate(new_rep_date=report_date) %>% separate(new_rep_date, into=c("rep
 
 Let's plot the top 20 roads that get reports along with the type of reports that they get.
 ```{r}
-
 highest_rp_roads <- (data %>% group_by(rd.nm) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head(20))$rd.nm
 
 data_to_plot <- (data %>% filter(rd.nm %in% highest_rp_roads) %>% filter(rd.rp.stid < 6) %>% group_by(rd.nm, rd.rp.stid) %>% summarize(c=length(rd.rp.cmid)))
@@ -421,4 +420,11 @@ No. The group doesn't support our assumption.
 
 ### People tend to report when it's crowded
 
-hngeeb el two distributions of average_stid wel number of reports againest el time
+My hypothesis here would be that people tend to report more when it's crowded. To prove this, we'll need to prove that distribution of the average status ID aganist the time is equivilant to the distribtution of the number of reports aganist the time. Which means that at a certain point of time, if the number of reports is hight, then the average status id should be high.
+
+```{r}
+average_stid <- data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time) %>% summarize(average_stid= mean(rd.rp.stid))
+
+
+reports_per_time <- data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time) %>% summarize(c= length(rd.rp.stid))
+```

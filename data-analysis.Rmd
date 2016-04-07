@@ -280,10 +280,6 @@ Let's have a look on our new dataset
 speed_data %>% sample_n(7) %>% kable
 ```
 
-```{r}
-(speed_data %>% mutate(from_to=paste(from,"->",to), speed=as.integer(speed)) %>% head(1000) %>% select(from_to, speed) %>% ggplot()) + geom_boxplot(aes(factor(from_to), speed)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-```
-
 ### Augmenting the Gender
 
 I though that the gender may be a useful feature in our data so I got the first name of all the users and wrote a script to query an endpoint that can infer genders. The endpoint returns the estimated gender along with how confident it is from this answer. I selected only genders with high confidence. Then using a code, that's written in Go, each full name is matched with the longest first name it can and gets its gender. Attempting to do so in R was extremely slow because of Regex, so I implemented it using trie in Go. Let's add these info to our data.
@@ -388,8 +384,13 @@ From the two plots, the rush hours in alex isn't that segnificant like the one i
 data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() 
 ```
 
-Between 9am and 10pm, the average reported status in cairo is always higher than that of Cairo. Alex seems like it's stable at status Id "2" which is "lazeez".
+Between 9am and 10pm, the average reported status in cairo is always higher than that of Cairo. Alex seems like it's stable at status Id "2" which is "lazeez". If so, does this imply that the average speed in alex is higher than that of cairo ?
 
+```{r}
+speed_data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,60)) %>%  ggplot(aes(x=factor(report_time), y=speed, color=city)) + geom_boxplot() + scale_y_log10()
+```
+
+No. The average speed in Cairo is almost higher than Alex.
 
 ### Male Vs. Female
 

@@ -1,6 +1,9 @@
 # Project 1: Traffic Data Analysis
 project duration: 24/2/2016 - 7/4/2016
 
+# MY RENDERED HTML
+[http://mbassem.com/csen1061-project1-traffic-data-analysis/data-analysis.html](http://mbassem.com/csen1061-project1-traffic-data-analysis/data-analysis.html)
+
 ## Project Description
 
 We all suffer from traffic, and as data scientists looking into this data is a gold mine.

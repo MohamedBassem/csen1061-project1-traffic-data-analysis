@@ -142,12 +142,12 @@ data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% m
 The crawling usually takes some time, that's why we have a lot of values on the x-axis. To have a better plot let's round it to the nearest half an hour.
 
 ```{r}
-round_time <- function(time){
+round_time <- function(time, mins){
   posix_time <- as.POSIXct(strptime(time, format="%H:%M:%S"))
-  as.POSIXct(strptime("1970-01-01", "%Y-%m-%d", tz="UTC") + round(as.numeric(posix_time)/1800)*1800 + 60*60*2) # The added 60*60*2 is a hack to fix the TZ
+  as.POSIXct(strptime("1970-01-01", "%Y-%m-%d", tz="UTC") + round(as.numeric(posix_time)/(mins*60))*(mins*60) + 60*60*2) # The added 60*60*2 is a hack to fix the TZ
 }
 
-data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=round_time(crawl_time)) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity')
+data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=round_time(crawl_time,30)) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity')
 ```
 
 The peak at 22:30 seems a bit suspicious. Let's investigate it more.
@@ -166,9 +166,9 @@ data$rd.rp.hr <- NULL
 data$rd.rp.mn <- NULL
 data$crawl_date <- NULL
 
-data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
 
-data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
 The results make sense as people will use By2ollak the most when going from home to work (06:30am - 07:00am) and back to home (02:30pm - 04:00pm) and those are the peaks in the plot. Also notice that the period between (01:00am - 04:00am) is the quietest.
@@ -309,6 +309,7 @@ write.csv(data$rd.rp.nm, file="./name_manipulation/names.txt")
 ```
 
 ```{r, engine="bash"}
+# Running the Go augmenter to output the (name,gender) pair
 pushd ./name_manipulation
 ./full_name_gender
 popd
@@ -318,5 +319,46 @@ popd
 data$gender <- read.csv(file="./name_manipulation/output.txt")$gender
 have_a_gender <- data %>% filter(!is.na(gender) & gender != "")
 have_a_gender %>% select(rd.rp.nm, gender) %>% head(10) %>% kable
+
+nrow(have_a_gender)
 ```
+
+Now that we have augmented our data with the gender we can start our analysis.
+
+```{r}
+have_a_gender %>% group_by(gender) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(gender))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+
+have_a_gender %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time, gender) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~gender, nrow=2) 
+```
+
+
+# Suggested Hypotheses 
+
+### Alex vs Cairo ( in timings probably )
+
+```{r}
+
+report_count <- data.frame(
+  cairo = length(data[data$city == "cairo","rd.rp.cmid"]),
+  alex = length(data[data$city == "alex","rd.rp.cmid"])
+)
+```
+
+```{r}
+data %>% filter(rd.rp.stid < 6) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time, city, rd.rp.stid) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c, fill=factor(rd.rp.stid))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~ city, nrow=2) + scale_fill_discrete(labels=stid_reports, name="SS")
+```
+
+```{r}
+data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,5), "%H:%M")) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=report_time, y=average_stid, shape=factor(city), color=factor(city))) + geom_point(size=3) +
+  geom_smooth() +theme(axis.text.x = element_blank())
+```
+
+### Alex vs Cairo ( in amount of lazeez ) 
+
+### Males stay late at night than females
+
+# TODO
+
+* The gender based comparisons
+
 

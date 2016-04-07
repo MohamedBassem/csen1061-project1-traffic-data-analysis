@@ -32,11 +32,14 @@ data %>% sapply(function(d) sum(is.na(d)))
 
 ## Let's Clean the data
 
+### Removing Columns with Unique Values
+
 Let's have a look at the uniqueness of the values in each column
 
 ```{r}
 data %>% sapply(function(d) length(unique(d)))
 ```
+
 All those columns with only one unique value are useless to our analysis as they don't distinguish between rows. Also it makes some sense as most of them are ads related and the ads seems to be the same throughout the whole data set. So we will remove all the ads related columns and those columns with only a single value.
 
 ```{r}
@@ -66,14 +69,18 @@ data <- (
  )
 ```
 
+### Fixing Column Types
+
 According to the structure we saw above, dates are represented as factors. We can convert them to a better format using the `strptime` function and convert it a format that `dplyr` understands using the `as.POSIXct` function.
 
 ```{r}
-data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %Y", tz="UTC"))
-data$rd.rp.nm <- as.character(data$rd.rp.nm)
+
+data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %Y", tz="UTC") + 60*60*2) # Fixing timezone
+
+#data$rd.rp.nm <- as.character(data$rd.rp.nm)
 ```
 
-## Column Analysis
+### Removing Useless Columns
 
 Now Let's have another look at the dataset columns and try to infer some info from the column names and values.
 
@@ -101,7 +108,10 @@ The guess seems to be correct. That's why those columns are not important to us 
 data <- (data %>% select(-c(rd.strq, rd.cmrq, rd.new)))
 ```
 
+### Column Name Estimations
+
 Those are my estimation for the columns meanings
+
 ```
 crawl_date   # The date this data was crawled
 rd.nm        # The Road name
@@ -118,6 +128,7 @@ rd.rp.cm     # The reporter's comment
 rd.rp.cmid   # Report id
 ```
 
+### Removing Duplicate Rows
 
 One of those columns seems very interesting. It's the `rd.rp.cmid`. It's the column representing the report Id. Since these dataset is all about reports, this column's values should be globally unique across the whole dataset.
 
@@ -125,32 +136,38 @@ One of those columns seems very interesting. It's the `rd.rp.cmid`. It's the col
 data %>% dim
 data$rd.rp.cmid %>% unique %>% length
 ```
+
 Aaaaand It's not. That's due to the way the data was collected. A cronjob runs every 30 minutes to fetch the latest reports, but the same reports could be fetched multiple time specially if they are on an inactive road. Let's keep only the first copy of each report.
 
 ```{r}
 data <- data[!(data$rd.rp.cmid %>% duplicated),]
 ```
 
-## Let's Plot the timings!
+Now that we have a clean, ready to use data, let's start adding some more useful features to it.
 
-Let's see the time people report the most
+## Feature Engineering
+
+### Extracting the Exact Report Time
+
+Let's see the timings people report
 
 ```{r}
-data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=as.POSIXct(strptime(crawl_time, format="%H:%M:%S"))) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid))  %>% ggplot + geom_point(aes(x=crawl_time, y=c))
+data %>% separate(crawl_date, into=c("crawl_date_tmp","crawl_time"), sep =" ") %>% mutate(crawl_time=as.POSIXct(strptime(crawl_time, format="%H:%M:%S"))) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot + geom_point(aes(x=crawl_time, y=c))
 ```
 
 The crawling usually takes some time, that's why we have a lot of values on the x-axis. To have a better plot let's round it to the nearest half an hour.
 
 ```{r}
 round_time <- function(time, mins){
-  posix_time <- as.POSIXct(strptime(time, format="%H:%M:%S"))
-  as.POSIXct(strptime("1970-01-01", "%Y-%m-%d", tz="UTC") + round(as.numeric(posix_time)/(mins*60))*(mins*60) + 60*60*2) # The added 60*60*2 is a hack to fix the TZ
+  posix_time <- as.POSIXct(strptime(time, format="%H:%M:%S", tz="UTC"))
+  as.POSIXct(strptime("1970-01-01", "%Y-%m-%d", tz="UTC") + round(as.numeric(posix_time)/(mins*60))*(mins*60))
 }
 
-data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=round_time(crawl_time,30)) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity')
+data %>% separate(crawl_date, into=c("crawl_date","crawl_time"), sep =" ") %>% mutate(crawl_time=format(round_time(crawl_time,30), "%H:%M")) %>% group_by(crawl_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=crawl_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
 ```
 
-The peak at 22:30 seems a bit suspicious. Let's investigate it more.
+The peak at 00:30 seems a bit suspicious. Let's investigate it more.
 
 ```{r}
 data$rd.rp.hr %>% unique
@@ -159,42 +176,37 @@ data$rd.rp.hr %>% unique
 Seeing this, now we are sure that it's the number of hours ago the report was created relative to the crawl time. We should take this into consideration instead of using the crawl time only.
 
 ```{r}
-
 data <- (data %>% mutate(report_date=crawl_date - (rd.rp.hr*60*60) - (rd.rp.mn * 60) ))
-# We don't need those columns anymore
+```
+
+And we don't need the old columns anymore
+
+```{r}
 data$rd.rp.hr <- NULL
 data$rd.rp.mn <- NULL
 data$crawl_date <- NULL
-
-data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
-
-data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-The results make sense as people will use By2ollak the most when going from home to work (06:30am - 07:00am) and back to home (02:30pm - 04:00pm) and those are the peaks in the plot. Also notice that the period between (01:00am - 04:00am) is the quietest.
+### Augmenting City names
 
+Let's augment our data by the info of whether a certain road is in Alexandria and Cairo. By doing so, we would be able to start doing some comparisons between the two cities. Road ids of Cairo and Alex were fetched and parsed from by2ollak's HTML and written as CSV in `city_road_id.csv`.
 
 ```{r}
-data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+city_road <- read.csv("city_road_id.csv")
+cairo_ids <- city_road[city_road$city == "cairo","rd.ri"]
+alex_ids <- city_road[city_road$city == "alex","rd.ri"]
+
+data <- (data %>% mutate(city= ifelse(rd.ri %in% cairo_ids, "cairo", ifelse(rd.ri %in% alex_ids, "alex", NA))))
+
+#Manually fix some NAs that are not present in the HTML for some reason
+data[data$rd.nm == "Makram 3ebeid;Autostrad To Mostafa ElNa7as",]$city <- "cairo"
+data[data$rd.nm == "Gam3et ElDewal St;Sudan St To Sphinx",]$city <- "cairo"
+data[data$rd.nm == "Tagamo3",]$city <- "cairo"
+data[data$rd.nm == "توتال (برج العرب)",]$city <- "alex"
+data[data$rd.nm == "Sa7rawy;Alex To Cairo",]$city <- "alex"
 ```
 
-Report day distribution isn't really significant as all the days are close to each other. The only significant thing is that Thursday is the highest with a margin probably as it's the weekend.
-
-### Road Analysis
-
-Let's plot the top 20 roads that get reports along with the type of reports that they get.
-```{r}
-
-highest_rp_roads <- (data %>% group_by(rd.nm) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head(20))$rd.nm
-
-data_to_plot <- (data %>% filter(rd.nm %in% highest_rp_roads) %>% filter(rd.rp.stid < 6) %>% group_by(rd.nm, rd.rp.stid) %>% summarize(c=length(rd.rp.cmid)))
-
-stid_mapping <- c("7alawa","lazez","mashy","za7ma","mafesh amal","so2al","5atar","7adsa","3otl","m3loma")
-
-stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
-
-(data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="SS")
-```
+### Road Speed Dataset
 
 By manually inspcting the website, you'll find a special username (@bey2ollakgps) who's always tweeting in a certain format about the speed between two points. Let's give it a look.
 
@@ -207,7 +219,7 @@ We can extract those speeds data into a seperate dataset for further analysis.
 ```{r}
 speed_data <- ( data %>%
                  filter(grepl("bey2ollakgps", rd.rp.nm)) %>%
-                 select(report_date,rd.nm, rd.rp.cm, rd.rp.stid)
+                 select(report_date,rd.nm, city, rd.rp.cm, rd.rp.stid)
               )
 
 OVERALL_TOOK_REGEX <- "Overall took \\[(\\d+) min\\] with average speed \\[(\\d+) km/h\\]"
@@ -265,44 +277,16 @@ speed_data <- (speed_data %>% mutate(speed=as.integer(speed), time=as.integer(ti
 Let's have a look on our new dataset
 
 ```{r}
-speed_data %>% sample_n(10) %>% kable
+speed_data %>% sample_n(7) %>% kable
 ```
 
 ```{r}
 (speed_data %>% mutate(from_to=paste(from,"->",to), speed=as.integer(speed)) %>% head(1000) %>% select(from_to, speed) %>% ggplot()) + geom_boxplot(aes(factor(from_to), speed)) + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 ```
 
-# City analysis
+### Augmenting the Gender
 
-Let's augment our data by the info of whether a certain road is in Alexandria and Cairo. By doing so, we would be able to start doing some comparisons between the two cities. Road ids of Cairo and Alex were fetched and parsed from by2ollak's HTML and written as CSV in `city_road_id.csv`.
-
-```{r}
-city_road <- read.csv("city_road_id.csv")
-cairo_ids <- city_road[city_road$city == "cairo","rd.ri"]
-alex_ids <- city_road[city_road$city == "alex","rd.ri"]
-
-data <- (data %>% mutate(city= ifelse(rd.ri %in% cairo_ids, "cairo", ifelse(rd.ri %in% alex_ids, "alex", NA))))
-
-#Manually fix some NAs that are not present in the HTML for some reason
-data[data$rd.nm == "Makram 3ebeid;Autostrad To Mostafa ElNa7as",]$city <- "cairo"
-data[data$rd.nm == "Gam3et ElDewal St;Sudan St To Sphinx",]$city <- "cairo"
-data[data$rd.nm == "Tagamo3",]$city <- "cairo"
-data[data$rd.nm == "توتال (برج العرب)",]$city <- "alex"
-data[data$rd.nm == "Sa7rawy;Alex To Cairo",]$city <- "alex"
-```
-
-Let's plot the percentage of reports in cairo compared to alex.
-
-```{r}
-data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
-```
-
-It seems like the number of people reporting in Cairo is much more than those who report in Alex.
-
-
-# Gender Analysis
-
-I though that the gender may be a useful feature in our data so I got the first name of all the users and wrote a script to query an endpoint that can infer genders and select only genders with high confidence. Let's add these info to our data.
+I though that the gender may be a useful feature in our data so I got the first name of all the users and wrote a script to query an endpoint that can infer genders. The endpoint returns the estimated gender along with how confident it is from this answer. I selected only genders with high confidence. Then using a code, that's written in Go, each full name is matched with the longest first name it can and gets its gender. Attempting to do so in R was extremely slow because of Regex, so I implemented it using trie in Go. Let's add these info to our data.
 
 ```{r}
 write.csv(data$rd.rp.nm, file="./name_manipulation/names.txt")
@@ -319,9 +303,66 @@ popd
 data$gender <- read.csv(file="./name_manipulation/output.txt")$gender
 have_a_gender <- data %>% filter(!is.na(gender) & gender != "")
 have_a_gender %>% select(rd.rp.nm, gender) %>% head(10) %>% kable
-
 nrow(have_a_gender)
 ```
+
+## Descriptive Analysis
+
+### When do people usually report ?
+
+```{r}
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head %>% kable
+
+data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat='identity') + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+The results shows that people use By2ollak the most when going from home to work (08:30am - 09:00am) and back to home (04:30pm - 06:00pm). Also notice that the period between (03:00am - 06:00am) is the quietest.
+
+We can plot the distribution of reports against the week day.
+
+```{r}
+data %>% mutate(report_date=format(report_date, "%a")) %>% group_by(report_date) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(report_date))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+```
+
+Report day distribution isn't really significant as all the days are close to each other. The only significant thing is that Thursday is the highest with a margin probably as it's the weekend.
+
+If we plot the number of reports segmented by the week day, you'll notice that the two peaks pattern we talked about earlier ( The work thing ) not there for weekends ( Friday and Saturday ).
+
+```{r}
+
+data %>% mutate(new_rep_date=report_date) %>% separate(new_rep_date, into=c("report_date_1","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5), report_day=format(report_date, "%a")) %>% group_by(report_day, report_time) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c, color=factor(report_day))) + geom_line() + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~report_day, nrow=7)
+
+```
+
+
+### What are the roads that gets the most reports ?
+
+Let's plot the top 20 roads that get reports along with the type of reports that they get.
+```{r}
+
+highest_rp_roads <- (data %>% group_by(rd.nm) %>% summarize(c=length(rd.rp.cmid)) %>% arrange(desc(c)) %>% head(20))$rd.nm
+
+data_to_plot <- (data %>% filter(rd.nm %in% highest_rp_roads) %>% filter(rd.rp.stid < 6) %>% group_by(rd.nm, rd.rp.stid) %>% summarize(c=length(rd.rp.cmid)))
+
+stid_mapping <- c("7alawa","lazez","mashy","za7ma","mafesh amal","so2al","5atar","7adsa","3otl","m3loma")
+
+stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
+
+(data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="SS")
+```
+
+# City analysis
+
+Let's plot the percentage of reports in cairo compared to alex.
+
+```{r}
+data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(city))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+```
+
+It seems like the number of people reporting in Cairo is much more than those who report in Alex.
+
+
+# Gender Analysis
 
 Now that we have augmented our data with the gender we can start our analysis.
 
@@ -358,10 +399,32 @@ data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, i
 data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() 
 ```
 
+```{r}
+
+tmp_data <- data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,1)) %>% group_by(report_time,city) %>% summarize(c= length(rd.rp.stid)) %>% ungroup
+
+tmp_data_cairo <- tmp_data %>% filter(city == "cairo")
+tmp_data_alex <- tmp_data %>% filter(city == "alex")
+
+ggplot() + geom_line(data=tmp_data_cairo, aes(x=report_time,y=cumsum(c))) + geom_line(data=tmp_data_alex, aes(x=report_time,y=cumsum(c)))
+```
+
 ### Males stay late at night than females
 
-# TODO
+```{r}
 
-* The gender based comparisons
+tmp_data <- have_a_gender %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time,gender) %>% summarize(c= length(rd.rp.cmid)) %>% ungroup
+
+tmp_data_male <- tmp_data %>% filter(gender == "male")
+tmp_data_female <- tmp_data %>% filter(gender == "female")
+
+ggplot() + geom_bar(data=tmp_data_male, aes(x=report_time,y=c, fill=gender, color=gender), stat="identity") + geom_bar(data=tmp_data_female, aes(x=report_time,y=c, fill=gender, color=gender),stat="identity")
+
+ggplot() + geom_line(data=tmp_data_male, aes(x=report_time,y=cumsum(c))) + geom_line(data=tmp_data_female, aes(x=report_time,y=cumsum(c)))
+```
+
+### Tendancy of those who ask to report
+```{r}
 
 
+```

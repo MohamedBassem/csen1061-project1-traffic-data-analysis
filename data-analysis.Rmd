@@ -353,7 +353,10 @@ data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, i
   geom_smooth() +theme(axis.text.x = element_blank())
 ```
 
-### Alex vs Cairo ( in amount of lazeez ) 
+
+```{r}
+data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() 
+```
 
 ### Males stay late at night than females
 

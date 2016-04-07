@@ -125,7 +125,7 @@ According to the structure we saw above, dates are represented as factors. We ca
 
 data$crawl_date <- as.POSIXct(strptime(data$crawl_date,  format="%a %b %d %H:%M:%S UTC %Y", tz="UTC") + 60*60*2) # Fixing timezone
 
-#data$rd.rp.nm <- as.character(data$rd.rp.nm)
+data$rd.rp.nm <- as.character(data$rd.rp.nm)
 ```
 
 ### Removing Useless Columns
@@ -352,7 +352,7 @@ nrow(have_a_gender)
 
 ## Descriptive Analysis
 
-*Terminolgy*
+### Terminolgy
 
 In the following analysis, we need a way to quantify how crowded is a certain road. To achieve this we will be using the user's reports. People's reports are one of the followings:
 ```
@@ -363,6 +363,8 @@ In the following analysis, we need a way to quantify how crowded is a certain ro
 5 --> mfesh 2amal
 ```
 If we get the average of those values at a certain point of time we can estimate how crowded a road is. The higher this value, the more crowded the road is. Throughout this document, this metric is called "Average Status ID" or "Average stid".
+
+*Note* : Any x-axis that's labelled "Time"" in the following analysis shows the time of a single day starting from the left by 12am till 12am of the following day.
 
 ### When do people usually report ?
 
@@ -420,6 +422,29 @@ multiplot(p1,p2)
 ```
 
 Yes! The two peaks of the rush hour are reflected on this plot, where it experiences a slowdown and an increase of the average stid.
+
+The average speed of this road and its standard deviation are
+```{r}
+sd_mean <- sa7rawy_da2ery_speed$speed %>% mean
+sd_sd <- sa7rawy_da2ery_speed$speed %>% sd
+sd_n <- sa7rawy_da2ery_speed %>% nrow
+
+sd_mean
+sd_sd
+sd_n
+
+error <- qnorm(0.975)*sd_sd/sqrt(sd_n)
+left <- sd_mean-error
+right <- sd_mean+error
+```
+
+So to have a confidence of 97.5% confidence the left and right speed bounds are
+
+```{r}
+paste(left, right)
+rm(sd_mean, sd_sd, sd_n, error, left,right)
+```
+
 
 ### Cairo Vs. Alex
 
@@ -487,7 +512,7 @@ ggplot() + geom_bar(data=tmp_data_male, aes(x=report_time,y=c, fill=gender, colo
 ggplot() + geom_line(data=tmp_data_male, aes(x=report_time,y=cumsum(c), color=gender)) + geom_line(data=tmp_data_female, aes(x=report_time,y=cumsum(c), color=gender)) + labs(title="Cummulative number of reports comparisons between males and females", x= "Time", y= "Number Of reports per 2 mins")
 ```
 
-No. The group doesn't support our assumption.
+No. The plots doesn't support our assumption.
 
 ## Hypotheses 
 

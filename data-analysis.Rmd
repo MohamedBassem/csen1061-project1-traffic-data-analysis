@@ -506,7 +506,9 @@ p2 <- ggplot(reports_per_time, aes(x=report_time, y=c)) + geom_point() + labs(ti
 
 multiplot(p1,p2)
 
-ggplot(NULL,aes(y=sort(average_stid$average_stid), x=sort(reports_per_time$c))) + geom_point() + geom_smooth(method="lm", se=FALSE) + labs(title="Q-Q Plot", x="Number of reports per 5 mins", y="Average Status Id per 5 mins")
+ggplot(NULL,aes(x=sort(average_stid$average_stid), y=sort(reports_per_time$c))) + geom_point() + geom_smooth(method="lm", se=FALSE) + labs(title="Q-Q Plot", y="Number of reports per 5 mins", x="Average Status Id per 5 mins")
 ```
 
-The qqplot shows that as the number of reports increase, the average stid increase. When the number of reports is greater than 200 report/5 mins, they are both directly proportional and given the number of votes you can directly predict the average stid.
+The qqplot shows that as it gets more crowded ( Increase of average stid ), the number of reports increase. When the the average stid gets greater than 2 (Lazeez), people start reporting about that and then both varibles become directly proportinal.
+
+So back to our hypothesis, it's proved. After a certain level of crowdedness people start reporting and complaining about that.

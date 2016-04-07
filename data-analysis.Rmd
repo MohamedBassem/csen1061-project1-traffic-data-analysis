@@ -289,7 +289,7 @@ speed_data %>% sample_n(7) %>% kable
 I though that the gender may be a useful feature in our data so I got the first name of all the users and wrote a script to query an endpoint that can infer genders. The endpoint returns the estimated gender along with how confident it is from this answer. I selected only genders with high confidence. Then using a code, that's written in Go, each full name is matched with the longest first name it can and gets its gender. Attempting to do so in R was extremely slow because of Regex, so I implemented it using trie in Go. Let's add these info to our data.
 
 ```{r}
-write.csv(data$rd.rp.nm, file="./name_manipulation/names.txt")
+write.csv(data$rd.rp.fullnm, file="./name_manipulation/names.txt")
 ```
 
 ```{r, engine="bash"}
@@ -351,7 +351,7 @@ stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
 (data_to_plot %>% ggplot(aes(x=rd.nm, y=c, fill=factor(rd.rp.stid)))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + scale_fill_discrete(labels=stid_reports, name="SS")
 ```
 
-# City analysis
+### Cairo Vs. Alex
 
 Let's plot the percentage of reports in cairo compared to alex.
 
@@ -361,42 +361,15 @@ data %>% group_by(city) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(
 
 It seems like the number of people reporting in Cairo is much more than those who report in Alex.
 
-
-# Gender Analysis
-
-Now that we have augmented our data with the gender we can start our analysis.
+Let's plot the number of reports in both cities against the time
 
 ```{r}
-have_a_gender %>% group_by(gender) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(gender))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+tmp_data <- data %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,1)) %>% group_by(report_time,city) %>% summarize(c= length(rd.rp.stid)) %>% ungroup
 
-have_a_gender %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time, gender) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~gender, nrow=2) 
-```
+tmp_data_cairo <- tmp_data %>% filter(city == "cairo")
+tmp_data_alex <- tmp_data %>% filter(city == "alex")
 
-
-# Suggested Hypotheses 
-
-### Alex vs Cairo ( in timings probably )
-
-```{r}
-
-report_count <- data.frame(
-  cairo = length(data[data$city == "cairo","rd.rp.cmid"]),
-  alex = length(data[data$city == "alex","rd.rp.cmid"])
-)
-```
-
-```{r}
-data %>% filter(rd.rp.stid < 6) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,30), "%H:%M")) %>% group_by(report_time, city, rd.rp.stid) %>% summarize(c=length(rd.rp.cmid)) %>% ggplot(aes(x=report_time, y=c, fill=factor(rd.rp.stid))) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle = 90, hjust = 1)) + facet_wrap(~ city, nrow=2) + scale_fill_discrete(labels=stid_reports, name="SS")
-```
-
-```{r}
-data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=format(round_time(report_time,5), "%H:%M")) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=report_time, y=average_stid, shape=factor(city), color=factor(city))) + geom_point(size=3) +
-  geom_smooth() +theme(axis.text.x = element_blank())
-```
-
-
-```{r}
-data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() 
+ggplot() + geom_bar(data=tmp_data_cairo, aes(x=report_time,y=c, fill=city, color=city), stat="identity") + geom_bar(data=tmp_data_alex, aes(x=report_time,y=c, fill=city, color=city),stat="identity")
 ```
 
 ```{r}
@@ -409,10 +382,26 @@ tmp_data_alex <- tmp_data %>% filter(city == "alex")
 ggplot() + geom_line(data=tmp_data_cairo, aes(x=report_time,y=cumsum(c))) + geom_line(data=tmp_data_alex, aes(x=report_time,y=cumsum(c)))
 ```
 
-### Males stay late at night than females
+From the two plots, the rush hours in alex isn't that segnificant like the one in cairo ( The two peaks ). Does this mean that there isn't heavy traffic in Alex even in rush hours? Let's check.
 
 ```{r}
+data %>% filter(rd.rp.stid < 6 & !is.na(rd.rp.stid)) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,5)) %>% group_by(report_time,city) %>% summarize(average_stid= mean(rd.rp.stid)) %>% ggplot(aes(x=as.integer(report_time), y=average_stid, fill=city, color=city, shape=city)) + geom_point(size=2)  + geom_smooth() 
+```
 
+Between 9am and 10pm, the average reported status in cairo is always higher than that of Cairo. Alex seems like it's stable at status Id "2" which is "lazeez".
+
+
+### Male Vs. Female
+
+First of all, what's the ratio of female by2ollak users to male users ?
+
+```{r}
+have_a_gender %>% group_by(gender) %>% summarize(c=length(rd.rp.cmid)) %>% mutate(c=(c/sum(c)*100)) %>% mutate(pos = cumsum(c)- c/2) %>% ggplot(aes(x="", y=c, fill=factor(gender))) + geom_bar(width=1,stat='identity') + geom_text(aes(x="", y=pos, label=paste(format(round(c,2),nsmall=2), "%"))) + coord_polar(theta = "y") + theme(axis.text.x = element_blank())
+```
+
+Males in Egypt usually stay later at night than females, can we prove that from the number of reports of males/females against the time ?
+
+```{r}
 tmp_data <- have_a_gender %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time,gender) %>% summarize(c= length(rd.rp.cmid)) %>% ungroup
 
 tmp_data_male <- tmp_data %>% filter(gender == "male")
@@ -423,8 +412,12 @@ ggplot() + geom_bar(data=tmp_data_male, aes(x=report_time,y=c, fill=gender, colo
 ggplot() + geom_line(data=tmp_data_male, aes(x=report_time,y=cumsum(c))) + geom_line(data=tmp_data_female, aes(x=report_time,y=cumsum(c)))
 ```
 
+No. The group doesn't support our assumption.
+
+## Suggested Hypotheses 
+
 ### Tendancy of those who ask to report
-```{r}
 
+### People tend to report when it's crowded
 
-```
+hngeeb el two distributions of average_stid wel number of reports againest el time

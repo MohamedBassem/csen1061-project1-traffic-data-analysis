@@ -411,7 +411,7 @@ stid_reports <- c("7alawa","lazez","mashy","za7ma","mafesh amal")
 Is the congestion on El Me7war from Sa7rawy to Da2ery affected by the rush hours ?
 
 ```{r}
-s7rawy_da2ery <- data %>% filter(rd.nm == "Me7war;Sa7rawy To Da2ery")
+sa7rawy_da2ery <- data %>% filter(rd.nm == "Me7war;Sa7rawy To Da2ery")
 sa7rawy_da2ery_speed <- speed_data %>% filter(from == "Me7war;Sa7rawy" & to == "Me7war;Da2ery")
 
 p1 <- sa7rawy_da2ery %>% filter(!is.na(rd.rp.stid) & rd.rp.stid < 6) %>% separate(report_date, into=c("report_date","report_time"), sep =" ") %>% mutate(report_time=round_time(report_time,2)) %>% group_by(report_time) %>% summarize(c= mean(rd.rp.stid)) %>% ggplot(aes(x=report_time, y=c)) + geom_line() + labs(title="Average stid comparison", x="Time", y="Average Stid per 2 mins")
